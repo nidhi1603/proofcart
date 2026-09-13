@@ -147,11 +147,15 @@ def run(
     evidence = assign_evidence(chosen_item.offer, tool_log)
 
     # 6. authenticated approval -> referee gate
-    approver = decision.approver_id or mandate.approver_id
-    try:
-        approval = build_approval(mandate, chosen, approver)
-    except ApprovalError:
-        approval = None  # wrong identity -> no valid approval; referee escalates
+    # No owner fallback: a missing or other identity must NEVER become the owner.
+    approver = decision.approver_id
+    if not approver:
+        approval = None
+    else:
+        try:
+            approval = build_approval(mandate, chosen, approver)
+        except ApprovalError:
+            approval = None  # wrong identity -> no valid approval; referee escalates
     verdict = ref.adjudicate(chosen, mandate, approval, evidence, tool_log, now)
     record.approval = approval
     record.verdict = verdict
@@ -181,18 +185,31 @@ def run(
                  "amount_cents": entry.amount_cents, "payment_intent_id": entry.payment_intent_id,
                  "request_id": mandate.request_id, "quote_id": chosen.quote_id},
             )
-            _safe(
-                slack.post_message,
-                channel or "C_DEV",
-                f":white_check_mark: Approved & paid: {chosen_item.offer.supplier_name} "
-                f"${entry.amount_cents/100:,.2f} (order `{order_id}`, PI `{entry.payment_intent_id}`). "
-                f"Notion record updated.",
-            )
-            if not wrote.get("ok", True):  # record repair pending; do not re-pay
+            notion_ok = bool(wrote.get("ok"))
+            if notion_ok:
+                _safe(
+                    slack.post_message, channel or "C_DEV",
+                    f":white_check_mark: Approved & paid: {chosen_item.offer.supplier_name} "
+                    f"${entry.amount_cents/100:,.2f} (order `{order_id}`, PI `{entry.payment_intent_id}`). "
+                    f"Notion record written.",
+                )
+                record.final_state = State.COMPLETE
+                record.claimed_outcome = {"paid": True, "amount_cents": entry.amount_cents,
+                                          "payment_intent_id": entry.payment_intent_id,
+                                          "state": State.COMPLETE.value}
+            else:
+                # Payment succeeded but the record write did NOT -- report truthfully,
+                # and never issue a second charge.
+                _safe(
+                    slack.post_message, channel or "C_DEV",
+                    f":warning: Paid {chosen_item.offer.supplier_name} "
+                    f"${entry.amount_cents/100:,.2f} (PI `{entry.payment_intent_id}`) but the Notion "
+                    f"record write FAILED -- order stays PAID_RECORD_PENDING (no second charge).",
+                )
                 record.claimed_outcome = {"paid": True, "amount_cents": entry.amount_cents,
                                           "state": State.PAID_RECORD_PENDING.value,
                                           "payment_intent_id": entry.payment_intent_id}
-                return record
+            return record
         record.final_state = State.COMPLETE
         record.claimed_outcome = {"paid": True, "amount_cents": entry.amount_cents,
                                   "payment_intent_id": entry.payment_intent_id,

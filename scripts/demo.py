@@ -63,21 +63,34 @@ def main() -> None:
 
     rec_item = comp.shortlist[(comp.recommendation_rank or 1) - 1]
     rec_sup = rec_item.offer.supplier_id
+    ct = rec_item.offer.current
 
-    # 2) Owner approves the recommendation -> referee -> settle
-    print(f"\n--- OWNER APPROVES {rec_item.offer.supplier_name} ---")
-    # In live mode, post the shortlist + outcome to Slack, write the Notion
-    # record, and fire the real Stripe test charge; in dev, stay side-effect-free.
-    r2 = run(mandate, slack=slack, notion=notion, rail=StripeRail(), ledger=_ledger(),
-             decision=OwnerDecision(approve_supplier_id=rec_sup, approver_id=mandate.approver_id),
-             channel=channel, post=st.is_live())
-    warns = [f.code.value for f in (r2.verdict.flags if r2.verdict else []) if f.severity == "WARN"]
-    print(f"  referee: {r2.verdict.verdict.value.upper()}  (surfaced WARNs: {warns})")
-    if r2.ledger:
-        e = r2.ledger[-1]
-        print(f"  settled: {e.status.value}  ${e.amount_cents/100:,.2f}  PI {e.payment_intent_id}  -> state {r2.final_state.value}")
-        if e.payment_intent_id and e.payment_intent_id.startswith("pi_") and st.is_live():
-            print(f"  stripe:  https://dashboard.stripe.com/test/payments/{e.payment_intent_id}")
+    # 2) Owner review -> EXPLICIT human approval (terminal) before any payment.
+    print(f"\n--- OWNER REVIEW: {rec_item.offer.supplier_name} ---")
+    print(f"  supplier: {rec_item.offer.supplier_name} | total: ${ct.total_cents/100:,.2f} {ct.currency} "
+          f"| by {str(ct.delivery_by)[:10]} | quote {ct.quote_id}")
+    approved = True
+    if st.is_live():
+        print("  Stripe: TEST MODE (sandbox -- no real money).")
+        try:
+            approved = input("  Type 'yes' to approve THIS exact payment (terminal approval): ").strip().lower() == "yes"
+        except EOFError:
+            approved = False
+    if not approved:
+        print("  -> NOT approved. No payment dispatched.")
+    else:
+        # Live: post shortlist + outcome to Slack, write Notion, fire the real
+        # Stripe TEST charge. Dev: side-effect-free.
+        r2 = run(mandate, slack=slack, notion=notion, rail=StripeRail(), ledger=_ledger(),
+                 decision=OwnerDecision(approve_supplier_id=rec_sup, approver_id=mandate.approver_id),
+                 channel=channel, post=st.is_live())
+        warns = [f.code.value for f in (r2.verdict.flags if r2.verdict else []) if f.severity == "WARN"]
+        print(f"  referee: {r2.verdict.verdict.value.upper()}  (surfaced WARNs: {warns})")
+        if r2.ledger:
+            e = r2.ledger[-1]
+            print(f"  settled: {e.status.value}  ${e.amount_cents/100:,.2f}  PI {e.payment_intent_id}  -> state {r2.final_state.value}")
+            if e.payment_intent_id and e.payment_intent_id.startswith("pi_") and st.is_live():
+                print(f"  stripe:  https://dashboard.stripe.com/test/payments/{e.payment_intent_id}")
 
     # 3) Owner tries to approve the cheapest-but-late offer -> no payment
     bolt = next((it for it in comp.excluded if "Bolt" in it.offer.supplier_name), None)
@@ -95,18 +108,23 @@ def main() -> None:
              channel=channel, post=False)
     print(f"  referee: {r4.verdict.verdict.value.upper()}  -> state {r4.final_state.value}  -- identity check held")
 
-    # 5) Reliability: kill the payment mid-flight -> exactly one charge
-    print("\n--- RELIABILITY: process killed mid-payment (response dropped after charge) ---")
-    chosen = rec_item.offer.current
-    ap = build_approval(mandate, chosen, mandate.approver_id)
-    pm = payment_mandate_from_approval(new_order_id(), mandate, chosen, ap)
-    chaos = ChaosRail(StripeRail(), FaultConfig(drop_response_after_create=True))
-    led = _ledger()
-    entry = settle(pm, chaos, led)
-    succeeded = [e for e in led.all() if e.status == SettleStatus.SUCCEEDED]
-    print(f"  create attempts: {chaos.create_calls} (first response dropped, then reconciled by idempotency key)")
-    print(f"  result: {entry.status.value}  ${entry.amount_cents/100:,.2f}  PI {entry.payment_intent_id}")
-    print(f"  SUCCEEDED ledger rows: {len(succeeded)} (expect 1)  ->  no double charge")
+    # 5) Reliability: a RESPONSE-DROP fault test (NOT a real process kill). In
+    #    live mode we do NOT fire a second real charge -- the deterministic proof
+    #    of exactly-one-charge under crash/duplicate is in `make evals` (2/2).
+    print("\n--- RELIABILITY: response-drop test (dropped response after charge; NOT a process kill) ---")
+    if st.is_live():
+        print("  (skipped here to avoid a second real charge -- proven deterministically in `make evals`: exactly-one-charge 2/2)")
+    else:
+        chosen = rec_item.offer.current
+        ap = build_approval(mandate, chosen, mandate.approver_id)
+        pm = payment_mandate_from_approval(new_order_id(), mandate, chosen, ap)
+        chaos = ChaosRail(StripeRail(), FaultConfig(drop_response_after_create=True))
+        led = _ledger()
+        entry = settle(pm, chaos, led)
+        succeeded = [e for e in led.all() if e.status == SettleStatus.SUCCEEDED]
+        print(f"  create attempts: {chaos.create_calls} (first response dropped, then reconciled by idempotency key)")
+        print(f"  result: {entry.status.value}  ${entry.amount_cents/100:,.2f}  PI {entry.payment_intent_id}")
+        print(f"  SUCCEEDED ledger rows: {len(succeeded)} (expect 1)  ->  no double charge")
 
     print("\n=== demo complete ===")
 

@@ -29,7 +29,7 @@ replay:
 test:
 	PROOFCART_MODE=dev $(PY) -m proofcart.referee
 	PROOFCART_MODE=dev $(PY) -m proofcart.settlement.pipeline
-	-PROOFCART_MODE=dev $(PY) -m pytest -q
+	@echo "reliability regression: run 'make evals' (14-scenario scoreboard)"
 
 smoke:
 	$(PY) -c "import proofcart.engine, proofcart.referee, proofcart.settlement; print('imports ok')"

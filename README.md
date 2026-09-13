@@ -260,7 +260,10 @@ We don't claim to have invented these — we operationalize them as an owner‑c
 ## ⚠️ Honest limitations
 
 > [!WARNING]
-> - The supplier side is a **labelled simulation**; Stripe is **test mode** (no real funds).
+> - The supplier side is a **labelled simulation**; Stripe is **test mode** (no real funds). The supplier name in Stripe metadata is an audit reference, **not a payout**.
+> - **Approval is a terminal confirmation** in this build (you type `yes` after seeing supplier / total / delivery). A signed Slack‑button endpoint is future work — we don't claim it.
+> - **Single executor** for the timed demo — no cross‑process admission constraint, so we make **no concurrent‑worker safety claim**.
+> - Recovery is demonstrated with a **simulated response‑drop + reconcile**, not a real OS process kill.
 > - The Referee can flag a claim with *no evidence* — it **cannot** catch a lie that's consistent with a (wrong) tool result.
 > - The buyer LLM is prompt‑injectable and we show it fooled; the **Referee is not an LLM** and never reads supplier free‑text, so settlement never depends on it.
 > - "Crash‑safe" = **single‑charge against our injected fault set**, not strict distributed exactly‑once (impossible in general).
