@@ -14,7 +14,7 @@
 
 <br/>
 
-## ▶️ [**Watch the 2‑minute demo**](REPLACE_WITH_YOUR_VIDEO_LINK)
+## ▶️ [**Watch the 2‑minute demo**](https://www.loom.com/share/7d9e7c2100a1404fbc9be4f16a613b29)
 
 <sub>_(replace this link with your video URL before submitting)_</sub>
 
@@ -279,6 +279,6 @@ We don't claim to have invented these — we operationalize them as an owner‑c
 
 **Built for the Multi‑App AI Agent Hackathon** · one agent · three apps · real economic work, safely.
 
-### ▶️ [Watch the 2‑minute demo](REPLACE_WITH_YOUR_VIDEO_LINK)
+### ▶️ [Watch the 2‑minute demo](https://www.loom.com/share/7d9e7c2100a1404fbc9be4f16a613b29)
 
 </div>
