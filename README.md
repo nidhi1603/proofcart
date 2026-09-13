@@ -8,7 +8,7 @@
 
 ### 💸 *When is it safe to let an agent move money?*
 
-It reads real supplier negotiations in **Slack**, reasons over them with an LLM, and settles a **real Stripe payment** recorded in **Notion** — but it **never spends a cent without the owner's approval**, and **won't double‑charge when a payment is interrupted.** And we don't just claim it: a **14 / 14** fault‑injection suite proves it — right next to a baseline agent that pays without permission and double‑charges on a crash.
+It reads real supplier negotiations in **Slack**, reasons over them with an LLM, and settles a **real Stripe payment** recorded in **Notion** — with the **owner in control**: it won't spend without your approval, and it's built so an interrupted payment can't double‑charge. A **14 / 14** deterministic test suite and a **losing baseline** (which pays without permission and double‑charges on a crash) back the design — and we state exactly **what's tested, and what isn't,** below.
 
 <br/>
 

@@ -65,8 +65,15 @@ def main() -> int:
         lines.append(f"  {it.rank}. *{it.offer.supplier_name}* — ${t.total_cents/100:,.2f} by {str(t.delivery_by)[:10]}")
     lines.append(f"\nReply `approve <supplier>` (e.g. `approve {comp.shortlist[0].offer.supplier_name}`) to authorize the payment, or `no` to decline.")
     lines.append(f"Only <@{owner}> can approve. Stripe is TEST mode (no real money).")
-    posted = slack.post_message(ch, "\n".join(lines))
-    after_ts = float(posted.get("ts") or "0")
+    try:
+        posted = slack.post_message(ch, "\n".join(lines))
+    except Exception as exc:
+        posted = {"ok": False, "error": str(exc)}
+    if not posted.get("ok", False) or not posted.get("ts"):
+        print("Failed to post the approval request -- aborting, no payment "
+              "(a stale/older approval must never authorize this purchase).")
+        return 1
+    after_ts = float(posted["ts"])
     print(f"Posted approval request to Slack. Waiting up to {TIMEOUT_S}s for owner {owner} to reply...")
 
     # 2) Wait for the OWNER's reply (identity-checked). Poll conversations_history
@@ -98,19 +105,27 @@ def main() -> int:
             except ValueError:
                 continue
             text = (msg.get("text") or "").strip().lower()
-            if text in ("no", "decline", "reject", "cancel"):
-                slack.post_message(ch, ":no_entry: Declined by owner. No payment made.")
-                print("Owner declined."); return 0
-            mm = re.search(r"approve\s+([a-z][\w .&-]*)", text)
-            if mm:
-                want = mm.group(1).strip()
+            # Explicit decline, or ANY negated approval ("do not approve",
+            # "don't approve", "not approve", "never approve") -> decline, never pay.
+            if text in ("no", "decline", "reject", "cancel") or re.search(
+                r"\b(?:do not|don'?t|not|never)\s+approve\b", text
+            ):
+                slack.post_message(ch, ":no_entry: Declined / not approved. No payment made.")
+                print("Owner declined / negated."); return 0
+            # Need 'approve' AND exactly ONE listed supplier named after it. Ambiguous
+            # or unnamed -> ask again (never guess, never pay on an unclear message).
+            if re.search(r"\bapprove\b", text):
+                hits = []
                 for sname, sid in by_name.items():
-                    first = sname.split()[0]
-                    if sname.startswith(want) or want.startswith(first) or first == want:
-                        chosen_sid = sid
-                        break
-            if chosen_sid:
-                break
+                    first = re.escape(sname.split()[0])
+                    if re.search(rf"\bapprove\b.*\b(?:{re.escape(sname)}|{first})\b", text):
+                        hits.append(sid)
+                hits = list(dict.fromkeys(hits))
+                if len(hits) == 1:
+                    chosen_sid = hits[0]
+                    break
+                slack.post_message(
+                    ch, ":grey_question: Reply `approve <supplier>` naming exactly one listed supplier.")
 
     if chosen_sid is None:
         slack.post_message(ch, ":hourglass: No owner approval received in time. No payment made.")
