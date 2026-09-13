@@ -5,6 +5,6 @@ pydantic>=2.7,<3         # typed contracts
 pyyaml>=6.0              # scenarios + mandate config
 stripe>=10              # settlement (TEST MODE ONLY)
 slack_sdk>=3.27          # read negotiations, post shortlist/outcome, verify owner identity
-notion-client>=2.2       # durable comparison/decision record
+notion-client>=2.2,<3   # v3 dropped databases.query; pin classic API
 python-dotenv>=1.0       # load .env
 pytest>=8                # tests

@@ -38,13 +38,15 @@ _TITLE_PROP = "order_id"
 
 def _stringify(v: Any) -> str:
     if isinstance(v, str):
-        return v
-    if isinstance(v, (int, float, bool)) or v is None:
-        return str(v)
-    try:
-        return json.dumps(v, sort_keys=True, default=str)
-    except Exception:
-        return str(v)
+        s = v
+    elif isinstance(v, (int, float, bool)) or v is None:
+        s = str(v)
+    else:
+        try:
+            s = json.dumps(v, sort_keys=True, default=str)
+        except Exception:
+            s = str(v)
+    return s[:1900]  # Notion hard-limits a single rich_text run to 2000 chars
 
 
 class NotionClient:
@@ -158,8 +160,27 @@ class NotionClient:
             return first.get("id") if isinstance(first, dict) else getattr(first, "id", None)
         return None
 
+    def _ensure_properties(self, client: Any, field_names: list) -> None:
+        """Add any missing fields as rich_text columns, so a page write can't fail
+        on a schema mismatch (the demo DB may start with only the order_id title)."""
+        db = self._settings.notion_db_id
+        try:
+            info = client.databases.retrieve(database_id=db)
+            existing = set((info.get("properties") or {}).keys()) if isinstance(info, dict) \
+                else set(getattr(info, "properties", {}) or {})
+        except Exception:
+            existing = set()
+        missing = {
+            f: {"rich_text": {}}
+            for f in field_names
+            if f and f != _TITLE_PROP and f not in existing
+        }
+        if missing:
+            client.databases.update(database_id=db, properties=missing)
+
     def _upsert_live(self, order_id: str, fields: dict) -> dict:
         client = self._notion()
+        self._ensure_properties(client, list((fields or {}).keys()))
         props = self._to_properties(order_id, fields)
         page_id = self._find_page_id(client, order_id)
         if page_id:
