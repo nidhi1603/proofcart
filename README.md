@@ -2,7 +2,13 @@
 
 # 🛒 ProofCart
 
-### An AI purchasing agent you can actually let **pay** — no payment without the owner's approval, every supplier claim checked for evidence, and a crash‑safe, single‑charge payment path.
+### The AI purchasing agent you can actually let **pay**.
+
+**Would you hand an AI agent your company card?** Today, honestly — *no.* It might hallucinate a price, overpay, get argued into a bad deal, or **double‑charge when it crashes.** So ProofCart is built around the one question that decides whether agents can do real economic work:
+
+### 💸 *When is it safe to let an agent move money?*
+
+It reads real supplier negotiations in **Slack**, reasons over them with an LLM, and settles a **real Stripe payment** recorded in **Notion** — but it **never spends a cent without the owner's approval**, and **won't double‑charge when a payment is interrupted.** And we don't just claim it: a **14 / 14** fault‑injection suite proves it — right next to a baseline agent that pays without permission and double‑charges on a crash.
 
 <br/>
 
@@ -21,7 +27,7 @@
 ---
 
 > [!NOTE]
-> **Multi‑App AI Agent Hackathon submission.** ProofCart is an autonomous agent that does **real economic work** across **three external apps** — it reads supplier negotiations from **Slack**, compares them with evidence, and — once the owner approves the exact quote — settles a real payment in **Stripe** and records it in **Notion**. The hard part isn't buying; it's *knowing when it's safe to let an agent move money.*
+> **Multi‑App AI Agent Hackathon submission** — one agent, **three external apps that hand off in one chain**: it reads negotiations in **Slack** → settles a real payment in **Stripe** (test mode) → records the order in **Notion**, with **DeepSeek** extracting the offers. Real economic work — with the owner in control the whole way.
 
 ## 📑 Contents
 
