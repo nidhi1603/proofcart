@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+runs/
+!runs/demo_golden/
+.DS_Store
+venv/
+.venv/
+*.egg-info/
