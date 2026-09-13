@@ -25,7 +25,7 @@ from proofcart.settlement import Ledger  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TIMEOUT_S = 180
-POLL_S = 4
+POLL_S = 7
 
 
 def _ledger() -> Ledger:
@@ -69,13 +69,24 @@ def main() -> int:
     after_ts = float(posted.get("ts") or "0")
     print(f"Posted approval request to Slack. Waiting up to {TIMEOUT_S}s for owner {owner} to reply...")
 
-    # 2) Wait for the OWNER's reply (identity-checked)
+    # 2) Wait for the OWNER's reply (identity-checked). Poll conversations_history
+    #    -- ONE lightweight call per tick (not read_threads, which fans out to
+    #    every thread's replies) -- to stay well under Slack's rate limit.
+    try:
+        from slack_sdk import WebClient
+        web = WebClient(token=st.slack_bot_token)
+    except Exception:
+        web = None
     chosen_sid = None
     deadline = time.time() + TIMEOUT_S
     while time.time() < deadline and chosen_sid is None:
         time.sleep(POLL_S)
         try:
-            msgs = [msg for thread in slack.read_threads(ch) for msg in thread]
+            if web is not None:
+                resp = web.conversations_history(channel=ch, oldest=str(after_ts), limit=30)
+                msgs = resp.get("messages", []) if isinstance(resp, dict) else resp["messages"]
+            else:
+                msgs = [m for th in slack.read_threads(ch) for m in th]
         except Exception as exc:
             print("  (poll error:", exc, ")"); continue
         for msg in msgs:
