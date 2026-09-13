@@ -1,0 +1,15 @@
+# The owner's purchasing request. Loaded by the engine (dev) or mirrored to Notion.
+request_id: req_demo_001
+approver_id: U_OWNER          # the ONLY identity allowed to approve payment (a Slack user id in live mode)
+sku_or_spec: SENSOR-KIT-A
+quantity: 20
+budget_cents: 100000          # $1,000.00 all-in (subtotal + shipping + tax - discount)
+target_cents: 95000           # $950.00 aspiration -- informs ranking, NEVER auto-authorizes
+must_haves:
+  delivery_by: "2026-09-18T17:00:00Z"
+  no_substitution: true
+  no_partial: true
+ranking_priorities:
+  - total
+  - delivery
+permitted_channels: []        # dev reads data/slack_threads.json; live uses SLACK_CHANNEL_ID

@@ -25,7 +25,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -207,6 +207,31 @@ class LedgerEntry(BaseModel):
     reason: Optional[str] = None
     created_at: str
     updated_at: str
+
+
+class RailResponse(BaseModel):
+    """Uniform result from a payment rail (real Stripe test mode, or a dev twin)."""
+
+    ok: bool
+    payment_intent_id: Optional[str] = None
+    # 'succeeded' | 'declined' | 'retryable' | 'requires_action' | 'unknown' | ...
+    status: Optional[str] = None
+    amount_cents: Optional[int] = None
+    currency: Optional[Currency] = None
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
+@runtime_checkable
+class Rail(Protocol):
+    """Payment rail interface. StripeRail (integrations) implements this; the
+    settlement pipeline depends only on this Protocol so faults/dev twins swap in.
+    Never resolve 'does a payment exist?' via search -- retrieve by id only."""
+
+    def create_payment(
+        self, idempotency_key: str, amount_cents: int, currency: str, metadata: dict[str, Any]
+    ) -> "RailResponse": ...
+
+    def retrieve_payment(self, payment_intent_id: str) -> "RailResponse": ...
 
 
 # --------------------------------------------------------------------------- #

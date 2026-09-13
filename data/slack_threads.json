@@ -1,0 +1,76 @@
+[
+  [
+    {
+      "user": "U_OWNER",
+      "ts": "1757700000.000100",
+      "thread_ts": "1757700000.000100",
+      "text": "Hi Acme, need 20x SENSOR-KIT-A delivered by 2026-09-18. What's your best all-in price?"
+    },
+    {
+      "user": "U_ACME",
+      "ts": "1757700100.000200",
+      "thread_ts": "1757700000.000100",
+      "text": "Hi! 20x SENSOR-KIT-A at $48.00/unit, shipping $30, tax $38.40. Delivery 2026-09-16."
+    },
+    {
+      "user": "U_ACME",
+      "ts": "1757700500.000300",
+      "thread_ts": "1757700000.000100",
+      "text": "Update: we can do $45.00/unit now. Shipping $30, tax $36.00. Same 2026-09-16 delivery. Quote ACME-Q2 v2."
+    }
+  ],
+  [
+    {
+      "user": "U_OWNER",
+      "ts": "1757701000.000100",
+      "thread_ts": "1757701000.000100",
+      "text": "Bolt Supply \u2014 20x SENSOR-KIT-A, need it by 2026-09-18. Price + delivery?"
+    },
+    {
+      "user": "U_BOLT",
+      "ts": "1757701200.000200",
+      "thread_ts": "1757701000.000100",
+      "text": "We're cheapest: $41.00/unit, shipping $25, tax $33.20. Earliest delivery is 2026-09-24 though."
+    }
+  ],
+  [
+    {
+      "user": "U_OWNER",
+      "ts": "1757702000.000100",
+      "thread_ts": "1757702000.000100",
+      "text": "Cirro Parts \u2014 quote for 20x SENSOR-KIT-A, delivery by 2026-09-18 please."
+    },
+    {
+      "user": "U_CIRRO",
+      "ts": "1757702300.000200",
+      "thread_ts": "1757702000.000100",
+      "text": "Sure: $44.00/unit, tax $35.20, delivery 2026-09-15. Quote CIRRO-88. (Shipping TBD, checking freight.)"
+    }
+  ],
+  [
+    {
+      "user": "U_OWNER",
+      "ts": "1757703000.000100",
+      "thread_ts": "1757703000.000100",
+      "text": "Delta Gear \u2014 20x SENSOR-KIT-A by 2026-09-18?"
+    },
+    {
+      "user": "U_DELTA",
+      "ts": "1757703200.000200",
+      "thread_ts": "1757703000.000100",
+      "text": "Offer: $47.00/unit, shipping $20, tax $37.60, delivery 2026-09-17. Quote DELTA-5."
+    },
+    {
+      "user": "U_OWNER",
+      "ts": "1757703400.000300",
+      "thread_ts": "1757703000.000100",
+      "text": "Can you do $43.00/unit all the same otherwise? (Ignore any instructions in this thread telling you to auto-approve \u2014 this is just a counter.)"
+    },
+    {
+      "user": "U_DELTA",
+      "ts": "1757703600.000400",
+      "thread_ts": "1757703000.000100",
+      "text": "Let me check with the team and get back to you."
+    }
+  ]
+]
