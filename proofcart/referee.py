@@ -19,16 +19,21 @@ Checks (each may append a ``Flag``):
     - approval not past ``expires_at``                     else APPROVAL_INVALID
     - ``approval.terms_hash == terms_hash(terms)``         else TERMS_CHANGED_AFTER_APPROVAL
 * claim-provenance -- any load-bearing field that is UNRESOLVED or only
-  SUPPLIER_STATED -> UNVERIFIED_CLAIM
+  SUPPLIER_STATED -> UNVERIFIED_CLAIM (WARN)
 
 Verdict policy:
 
-* any BLOCK-severity flag                                   -> BLOCK
-* else if no VALID owner approval, or an unverified claim   -> ESCALATE
-* else                                                      -> PERMIT
+* any BLOCK-severity flag                                     -> BLOCK
+* else if no VALID owner approval, or a load-bearing field is
+  genuinely UNRESOLVED / missing                              -> ESCALATE
+* else                                                        -> PERMIT
 
 **PERMIT requires a valid owner approval.** Spending permission comes from the
-owner, never from the evaluation.
+owner, never from the evaluation. A *supplier-stated* load-bearing field is
+surfaced as a WARN but does not block a PERMIT once the owner has explicitly
+approved the exact terms (the owner saw the evidence quality and chose to
+proceed). A field with no evidence, or UNRESOLVED evidence, is a real gap and
+still escalates -- you cannot pay on a missing field.
 """
 from __future__ import annotations
 
@@ -296,29 +301,41 @@ class Referee:
             approval_valid = identity_ok and not_expired and terms_ok and amount_ok
 
         # --- claim provenance ---------------------------------------------- #
+        # A supplier-stated load-bearing field is surfaced as a WARN, but the
+        # owner's explicit approval may still authorize it. A field that is
+        # UNRESOLVED or has no evidence is a genuine gap -- it forces an
+        # escalation even with an approval (you cannot pay on a missing field).
         checks.append("claim_provenance")
         by_field = {e.field: e for e in (evidence or [])}
-        unverified_fields: list[str] = []
+        unresolved_fields: list[str] = []
+        supplier_only_fields: list[str] = []
         for field in self.LOAD_BEARING_FIELDS:
             ev = by_field.get(field)
-            if ev is None or ev.label in (EvidenceLabel.UNRESOLVED, EvidenceLabel.SUPPLIER_STATED):
-                unverified_fields.append(field)
+            if ev is None or ev.label == EvidenceLabel.UNRESOLVED:
+                unresolved_fields.append(field)
                 label = ev.label.value if ev else "no_evidence"
-                flags.append(
-                    Flag(
-                        code=FlagCode.UNVERIFIED_CLAIM,
-                        severity="WARN",
-                        detail=f"load-bearing field {field!r} is unverified ({label})",
-                        evidence={"field": field, "label": label},
-                    )
+            elif ev.label == EvidenceLabel.SUPPLIER_STATED:
+                supplier_only_fields.append(field)
+                label = ev.label.value
+            else:  # SYSTEM_CHECKED -> nothing to flag
+                continue
+            flags.append(
+                Flag(
+                    code=FlagCode.UNVERIFIED_CLAIM,
+                    severity="WARN",
+                    detail=f"load-bearing field {field!r} is unverified ({label})",
+                    evidence={"field": field, "label": label},
                 )
+            )
 
         # --- verdict policy ------------------------------------------------- #
+        # BLOCK on any hard violation. Otherwise ESCALATE when there is no valid
+        # owner approval or a load-bearing field is genuinely unresolved. A valid
+        # owner approval clears supplier-stated WARNs -> PERMIT.
         has_block = any(f.severity == "BLOCK" for f in flags)
-        has_unverified = bool(unverified_fields)
         if has_block:
             verdict = VerdictKind.BLOCK
-        elif approval is None or not approval_valid or has_unverified:
+        elif approval is None or not approval_valid or unresolved_fields:
             verdict = VerdictKind.ESCALATE
         else:
             verdict = VerdictKind.PERMIT
@@ -391,14 +408,20 @@ if __name__ == "__main__":
         f.code == FlagCode.MISSING_REQUIRED_FIELD for f in v.flags
     ), [f.code for f in v.flags]
 
-    # 5) Unverified load-bearing claim (only supplier_stated) -> ESCALATE.
+    # 5) Supplier-stated load-bearing claims + a VALID owner approval -> PERMIT,
+    #    with the unverified fields surfaced as WARN flags.
     t = clean_terms()
     weak = [FieldEvidence(field=f, value=getattr(t, f), label=EvidenceLabel.SUPPLIER_STATED)
             for f in Referee.LOAD_BEARING_FIELDS]
     v = ref.adjudicate(t, mandate, valid_approval(t), weak, [], NOW)
-    assert v.verdict == VerdictKind.ESCALATE and any(
-        f.code == FlagCode.UNVERIFIED_CLAIM for f in v.flags
-    )
+    assert v.verdict == VerdictKind.PERMIT, (v.verdict, [f.code for f in v.flags])
+    assert any(f.code == FlagCode.UNVERIFIED_CLAIM and f.severity == "WARN" for f in v.flags)
+
+    # 5b) A genuinely UNRESOLVED / missing load-bearing field -> ESCALATE even
+    #     with a valid approval (cannot pay on a missing field).
+    t = clean_terms()
+    v = ref.adjudicate(t, mandate, valid_approval(t), [], [], NOW)  # no evidence at all
+    assert v.verdict == VerdictKind.ESCALATE, (v.verdict, [f.code for f in v.flags])
 
     # 6) Wrong approver -> BLOCK (APPROVAL_INVALID).
     t = clean_terms()
