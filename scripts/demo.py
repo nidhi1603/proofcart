@@ -36,6 +36,9 @@ def _ledger() -> Ledger:
 def main() -> None:
     st = get_settings()
     mandate = _mandate()
+    # In live mode the approver is the real Slack owner id from .env.
+    if st.is_live() and st.owner_id:
+        mandate = mandate.model_copy(update={"approver_id": st.owner_id})
     channel = st.slack_channel_id or "C_DEV"
     print(f"=== ProofCart demo (mode={st.mode}) ===")
     for line in st.status_banner():
