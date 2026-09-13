@@ -112,8 +112,8 @@ def main() -> int:
     now_offer = next((it for it in recheck.comparison.shortlist
                       if it.offer.supplier_id == chosen_sid), None)
     exp_hash, exp_total, sup_name = displayed[chosen_sid]
-    if now_offer is None or terms_hash(now_offer.current) != exp_hash:
-        new_total = now_offer.current.total_cents if now_offer else None
+    if now_offer is None or terms_hash(now_offer.offer.current) != exp_hash:
+        new_total = now_offer.offer.current.total_cents if now_offer else None
         detail = (f", it is now ${new_total/100:,.2f}" if new_total is not None
                   else ", it is no longer eligible")
         slack.post_message(ch,
