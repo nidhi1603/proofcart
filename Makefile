@@ -5,6 +5,7 @@ help:
 	@echo "ProofCart make targets:"
 	@echo "  make demo       - full flow in DEV mode (no keys)"
 	@echo "  make demo-live  - full flow against the 3 real apps (.env required)"
+	@echo "  make approve-live - live run that WAITS for the owner to approve in Slack"
 	@echo "  make seed       - post the seeded supplier threads into the live Slack channel"
 	@echo "  make evals      - run the scenario suite + NaiveCart baseline -> reports/scoreboard.md"
 	@echo "  make replay     - re-score the referee offline (determinism check)"
@@ -16,6 +17,9 @@ demo:
 
 demo-live:
 	PROOFCART_MODE=live $(PY) scripts/demo.py
+
+approve-live:
+	PROOFCART_MODE=live $(PY) scripts/approve_live.py
 
 seed:
 	PROOFCART_MODE=live $(PY) scripts/seed_slack.py

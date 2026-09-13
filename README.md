@@ -161,6 +161,8 @@ cp .env.example .env            # everything degrades to mocks if a key is blank
 
 make demo                       # DEV: full flow, no keys needed
 make demo-live                  # LIVE: real Slack → DeepSeek → Stripe test → Notion
+make approve-live               # LIVE: posts the shortlist, then WAITS for the owner
+                                #       to reply "approve <supplier>" in Slack before paying
 make evals                      # reliability scoreboard (ProofCart vs. a baseline)
 make test                       # module self-tests
 ```
@@ -261,7 +263,7 @@ We don't claim to have invented these — we operationalize them as an owner‑c
 
 > [!WARNING]
 > - The supplier side is a **labelled simulation**; Stripe is **test mode** (no real funds). The supplier name in Stripe metadata is an audit reference, **not a payout**.
-> - **Approval is a terminal confirmation** in this build (you type `yes` after seeing supplier / total / delivery). A signed Slack‑button endpoint is future work — we don't claim it.
+> - **Approval is the owner's own Slack reply.** `make approve-live` posts the shortlist and **waits** for the owner to reply `approve <supplier>` in the channel; the payment fires only then, and only if the reply's sender matches the configured owner's Slack user id. _We poll for that reply and check the sender id; we do **not** yet verify Slack's request signature or use a signed button callback — that's future work. (`make demo-live` uses a local terminal `yes` instead.)_
 > - **Single executor** for the timed demo — no cross‑process admission constraint, so we make **no concurrent‑worker safety claim**.
 > - Recovery is demonstrated with a **simulated response‑drop + reconcile**, not a real OS process kill.
 > - The Referee can flag a claim with *no evidence* — it **cannot** catch a lie that's consistent with a (wrong) tool result.
