@@ -92,6 +92,14 @@ def main() -> None:
             if e.payment_intent_id and e.payment_intent_id.startswith("pi_") and st.is_live():
                 print(f"  stripe:  https://dashboard.stripe.com/test/payments/{e.payment_intent_id}")
 
+    # LIVE mode ends after the owner's decision. Everything below injects SCRIPTED
+    # decisions to illustrate behaviours -- safe in DEV (deterministic, no real
+    # money), but they must NEVER run against real money or override the owner's
+    # live choice (e.g. paying Bolt after the owner said "no").
+    if st.is_live():
+        print("\n(dev-only illustrations skipped in live mode.)")
+        return
+
     # 3) Owner tries to approve the cheapest-but-late offer -> no payment
     bolt = next((it for it in comp.excluded if "Bolt" in it.offer.supplier_name), None)
     if bolt:

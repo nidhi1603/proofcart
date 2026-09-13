@@ -20,7 +20,7 @@ from proofcart.engine import OwnerDecision, run  # noqa: E402
 from proofcart.integrations.notion import NotionClient  # noqa: E402
 from proofcart.integrations.slack import SlackClient  # noqa: E402
 from proofcart.integrations.stripe_rail import StripeRail  # noqa: E402
-from proofcart.schemas import OwnerMandate  # noqa: E402
+from proofcart.schemas import OwnerMandate, terms_hash  # noqa: E402
 from proofcart.settlement import Ledger  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -53,6 +53,12 @@ def main() -> int:
         print("No eligible offers."); return 0
 
     by_name = {it.offer.supplier_name.lower(): it.offer.supplier_id for it in comp.shortlist}
+    # Bind each displayed offer to its EXACT terms, so we can refuse if the deal
+    # changes between what the owner saw and settlement (the changed-price guard).
+    displayed = {it.offer.supplier_id: (terms_hash(it.offer.current),
+                                        it.offer.current.total_cents,
+                                        it.offer.supplier_name)
+                 for it in comp.shortlist}
     lines = ["*ProofCart needs your approval.* Eligible offers:"]
     for it in comp.shortlist:
         t = it.offer.current
@@ -99,8 +105,24 @@ def main() -> int:
         slack.post_message(ch, ":hourglass: No owner approval received in time. No payment made.")
         print("No approval received; no payment."); return 0
 
-    # 3) Owner approved -> settle (posts outcome, writes Notion, real Stripe test charge)
-    print("Owner approved supplier:", chosen_sid)
+    # 3) Changed-price guard: re-read NOW and confirm the approved offer is still
+    #    the exact deal the owner saw. If it changed, refuse and require re-review.
+    print("Owner approved supplier:", chosen_sid, "-- re-checking the deal is unchanged...")
+    recheck = run(m, slack=slack, notion=notion, rail=StripeRail(), ledger=_ledger(), channel=ch, post=False)
+    now_offer = next((it for it in recheck.comparison.shortlist
+                      if it.offer.supplier_id == chosen_sid), None)
+    exp_hash, exp_total, sup_name = displayed[chosen_sid]
+    if now_offer is None or terms_hash(now_offer.current) != exp_hash:
+        new_total = now_offer.current.total_cents if now_offer else None
+        detail = (f", it is now ${new_total/100:,.2f}" if new_total is not None
+                  else ", it is no longer eligible")
+        slack.post_message(ch,
+            f":warning: The {sup_name} offer changed since you approved it "
+            f"(you saw ${exp_total/100:,.2f}{detail}). *No payment made* -- please review again.")
+        print("Deal changed since approval -> refused, no payment.")
+        return 0
+
+    # 4) Deal unchanged -> settle (posts outcome, writes Notion, real Stripe test charge)
     r2 = run(m, slack=slack, notion=notion, rail=StripeRail(), ledger=_ledger(),
              decision=OwnerDecision(approve_supplier_id=chosen_sid, approver_id=owner),
              channel=ch, post=True)
