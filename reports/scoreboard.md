@@ -1,6 +1,6 @@
 # ProofCart reliability scoreboard
 
-_Generated 2026-09-13T22:32:04.829394+00:00 · mode: dev (no API keys; deterministic dev extractor + dev payment twin)_
+_Generated 2026-09-13T22:34:40.330306+00:00 · mode: dev (no API keys; deterministic dev extractor + dev payment twin)_
 
 ProofCart is scored against NaiveCart, a fair **component-removal** baseline that shares ProofCart's exact extraction and comparison but removes the enforced guardrails: (a) the owner-approval / referee gate, (b) crash-safe exactly-once settlement, and (c) settlement verification. Both agents are scored by the same grader against the same expectations. Charge counts are measured at the payment rail (the arbiter of how many charges occurred), never asserted a priori.
 
