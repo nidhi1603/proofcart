@@ -58,6 +58,12 @@ def collect(threads: list[list[dict]], mandate: OwnerMandate, owner_id: str):
         users = {m.get("user") for m in thread if m.get("user")}
         user_mode = owner_id in users and len(users) > 1
 
+        # In live/prefix mode, skip Slack system/noise threads (channel joins,
+        # app-added notices, Slackbot messages): a real supplier thread always
+        # has at least one "*Name:*" prefixed message.
+        if not user_mode and not any(_PREFIX.match(m.get("text") or "") for m in thread):
+            continue
+
         if user_mode:
             opener = next((m for m in thread if m.get("user") == owner_id), None)
             name = _name_from_opener(opener.get("text", "")) if opener else None
