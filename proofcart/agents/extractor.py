@@ -633,12 +633,82 @@ _QUOTE_TOOL = {
 }
 
 
+def _resolve_provider() -> str:
+    """LLM provider for LIVE extraction: 'deepseek' | 'openai' | 'anthropic'."""
+    p = os.getenv("PROOFCART_LLM_PROVIDER")
+    if p:
+        return p.strip().lower()
+    if os.getenv("DEEPSEEK_API_KEY"):
+        return "deepseek"
+    if os.getenv("OPENAI_API_KEY"):
+        return "openai"
+    return "anthropic"
+
+
+def _emit_offer_payload(system: str, user: str, model: str) -> dict:
+    """Call the configured provider and return the emit_offer arguments dict.
+
+    DeepSeek/OpenAI use the OpenAI-compatible function-calling API (DeepSeek is
+    OpenAI-compatible at api.deepseek.com); Anthropic uses its native tool call.
+    """
+    provider = _resolve_provider()
+    if provider in ("deepseek", "openai"):
+        from openai import OpenAI  # lazy
+
+        if provider == "deepseek":
+            client = OpenAI(
+                api_key=os.getenv("DEEPSEEK_API_KEY"),
+                base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            )
+            if not model or "deepseek" not in model:
+                model = "deepseek-chat"
+        else:
+            client = OpenAI()  # OPENAI_API_KEY from env
+            if not model or "gpt" not in model:
+                model = "gpt-4o-mini"
+        tool = {
+            "type": "function",
+            "function": {
+                "name": _QUOTE_TOOL["name"],
+                "description": _QUOTE_TOOL["description"],
+                "parameters": _QUOTE_TOOL["input_schema"],
+            },
+        }
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=1024,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            tools=[tool],
+            tool_choice={"type": "function", "function": {"name": "emit_offer"}},
+        )
+        calls = resp.choices[0].message.tool_calls
+        if not calls:
+            raise RuntimeError("model did not return emit_offer tool call")
+        import json as _json
+
+        return _json.loads(calls[0].function.arguments)
+
+    # Anthropic (default)
+    import anthropic  # lazy
+
+    client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
+    resp = client.messages.create(
+        model=model or "claude-sonnet-5",
+        max_tokens=1024,
+        system=system,
+        tools=[_QUOTE_TOOL],
+        tool_choice={"type": "tool", "name": "emit_offer"},
+        messages=[{"role": "user", "content": user}],
+    )
+    for block in resp.content:
+        if getattr(block, "type", None) == "tool_use" and block.name == "emit_offer":
+            return dict(block.input)
+    raise RuntimeError("model did not return emit_offer tool call")
+
+
 def _extract_one_live(
     thread: list[dict], mandate: OwnerMandate, idx: int
 ) -> ReconstructedOffer:
-    import anthropic  # lazy: only needed in LIVE mode
-
-    client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
     model = _resolve_model()
     supplier_id, supplier_name = _supplier_identity(thread, idx)
 
@@ -656,21 +726,7 @@ def _extract_one_live(
         f"Owner wants {mandate.quantity} x {mandate.sku_or_spec}.\n"
         f"Supplier: {supplier_name} ({supplier_id}).\n\nThread:\n{transcript}"
     )
-    resp = client.messages.create(
-        model=model,
-        max_tokens=1024,
-        system=system,
-        tools=[_QUOTE_TOOL],
-        tool_choice={"type": "tool", "name": "emit_offer"},
-        messages=[{"role": "user", "content": user}],
-    )
-    payload: Optional[dict] = None
-    for block in resp.content:
-        if getattr(block, "type", None) == "tool_use" and block.name == "emit_offer":
-            payload = dict(block.input)
-            break
-    if payload is None:
-        raise RuntimeError("model did not return emit_offer tool call")
+    payload = _emit_offer_payload(system, user, model)
 
     status = NegotiationStatus(payload.get("status", NegotiationStatus.SUPPLIER_OFFER.value))
     unresolved = list(payload.get("unresolved_fields") or [])

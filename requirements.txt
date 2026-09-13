@@ -1,5 +1,6 @@
 # Pin loosely; re-check exact versions at build time (`pip index versions <pkg>`).
-anthropic>=0.40          # buyer/extraction agent + optional LLM judge
+openai>=1.40             # extraction via DeepSeek (OpenAI-compatible) or OpenAI
+anthropic>=0.40          # extraction via Anthropic (optional alternative)
 pydantic>=2.7,<3         # typed contracts
 pyyaml>=6.0              # scenarios + mandate config
 stripe>=10              # settlement (TEST MODE ONLY)
