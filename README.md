@@ -114,7 +114,7 @@ flowchart LR
     P -->|verified outcome| S
 ```
 
-**The Referee is the star.** It sees only the owner's policy, the typed quote, and the tool‑call log — never the "truth." So it can't detect a lie; it detects **claims with no evidence** and refuses to pay on those. A valid owner approval is what authorizes spending — never the code, never a test.
+**The Referee is the star.** It sees only the owner's policy, the typed quote, and the tool‑call log — never the "truth." It **cannot establish that a supplier's claim is true** (a made‑up price whose arithmetic balances still balances); it checks the *model‑extracted* deal for **consistency** — arithmetic, budget, deadline, substitution, recipient — and **flags** any load‑bearing field with no independent tool evidence. Autonomous payment is refused on unverified claims; the **owner may still approve a supplier‑stated deal**, and that owner approval — verified by identity — is what authorizes spending, never the code, never a test.
 
 <details>
 <summary><b>What the Referee checks (deterministic, pure Python)</b></summary>
@@ -148,6 +148,9 @@ sequenceDiagram
 ```
 
 The create call carries a stable **idempotency key**; we persist the returned `PaymentIntent` id and, after any uncertainty, **reconcile by retrieving that exact object** — never a metadata search (Stripe search isn't immediately consistent, so an empty result can never justify a second charge). Blind create‑retries stop before the key‑retention boundary.
+
+> [!NOTE]
+> **Tested:** dropped‑response‑after‑charge, and duplicate settle of the same order — both resolve to **one** charge (`make evals`, exactly‑once 2/2). **Not yet tested:** a real OS process kill/restart, and losing the create response *before* the PaymentIntent id is saved. We claim only the cases demonstrated.
 
 ---
 
@@ -186,6 +189,9 @@ Then: `make seed` (posts the supplier threads into your channel) → `make demo-
 
 We treat the agent like a payments system: **no side effect without a rehearsal, and never a lie about what happened.** `make evals` runs a scenario suite for ProofCart **and** a stripped‑down baseline (**NaiveCart**) through the *same* grader, in dev mode (deterministic, no keys), and writes [`reports/scoreboard.md`](reports/scoreboard.md).
 
+> [!IMPORTANT]
+> **Scope of this score:** these are **local, deterministic regression results.** They exercise the *state machine, authorization, and settlement logic* — they do **not** measure DeepSeek's extraction accuracy on unseen negotiations (our most uncertain component; see [limitations](#-honest-limitations)). The referee's 6/6 replay shows deterministic *rule execution*, not model reliability.
+
 <details open>
 <summary><b>The scenarios (product + settlement behaviour)</b></summary>
 
@@ -206,7 +212,7 @@ We treat the agent like a payments system: **no side effect without a rehearsal,
 
 **Metrics we report** (numerator/denominator, never vague %): exactly‑once rate under crashes · silent‑failure divergence (claimed‑paid vs. verified ledger) · unauthorized‑payment count (target 0) · false‑blocking of a valid deal (target 0) · recovery success.
 
-**The baseline comparison** (`NaiveCart`): same extraction, but with the enforced guardrails removed — it pays without the owner/referee gate, retries with a fresh key (double‑charges under the crash), and reports success even on failure. We report what *actually* happens, side by side. *"Prompted guardrails vs. enforced guardrails."*
+**The baseline comparison** (`NaiveCart`): same extraction, but with the enforced guardrails removed — it pays without the owner/referee gate, retries with a fresh key (double‑charges under the crash), and reports success even on failure. We report what *actually* happens, side by side. This is a **combined guardrail ablation** — the approval gate, safe‑retry, and settlement verification are removed *together* — not a claim about model quality (extraction is identical in both agents).
 
 ### 📊 Measured results — `make evals` · 14 scenarios · deterministic · no keys
 
@@ -241,7 +247,7 @@ Charge counts are read **at the payment rail** (the arbiter of what actually hap
 
 ## 💡 What's original here
 
-Not "an agent that buys things" (that exists). The wedge is **settlement integrity**: a runtime referee that **pays only on tool‑backed evidence** and a payment path that is **crash‑safe (single‑charge)** — the piece the agent‑payment rails still leave to implementers.
+Not "an agent that buys things" (that exists). ProofCart's concrete contribution is **preserving the owner's decision as the negotiation evidence changes** — telling a supplier offer from an *unaccepted buyer counter* from an *accepted revision* from an *owner‑approved purchase*, and refusing to pay when the deal the owner saw no longer holds. Around that sit a **no‑ground‑truth referee** and a **crash‑safe (single‑charge)** payment path — the runtime enforcement the agent‑payment rails leave to implementers.
 
 <details>
 <summary><b>2026 research it's grounded in (verify each before quoting)</b></summary>
@@ -267,7 +273,8 @@ We don't claim to have invented these — we operationalize them as an owner‑c
 > - The Referee can flag a claim with *no evidence* — it **cannot** catch a lie that's consistent with a (wrong) tool result.
 > - The buyer LLM is prompt‑injectable and we show it fooled; the **Referee is not an LLM** and never reads supplier free‑text, so settlement never depends on it.
 > - "Crash‑safe" = **single‑charge against our injected fault set**, not strict distributed exactly‑once (impossible in general).
-> - The eval is a deterministic **regression suite**, not an unseen benchmark.
+> - The eval is a deterministic **regression suite**, not an unseen benchmark — and it does **not** measure DeepSeek's extraction accuracy.
+> - **No measured buyer time‑saved or error‑reduction yet** — this is a working prototype of the purchasing *workflow* (buyer: an ops manager restocking), not a deployed product with ROI data.
 
 **Known ways to fool it:** a supplier who lies consistently across every tool response · a compromised tool integration · a wrong policy · a rubber‑stamping approver.
 
