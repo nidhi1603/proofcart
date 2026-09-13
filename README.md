@@ -2,7 +2,7 @@
 
 # 🛒 ProofCart
 
-### An AI purchasing agent you can actually let **pay** — because a referee refuses to spend on anything it can't verify, and the payment is provably crash‑safe.
+### An AI purchasing agent you can actually let **pay** — no payment without the owner's approval, every supplier claim checked for evidence, and a crash‑safe, single‑charge payment path.
 
 <br/>
 
@@ -15,8 +15,6 @@
 <br/>
 
 ## ▶️ [**Watch the 2‑minute demo**](https://www.loom.com/share/7d9e7c2100a1404fbc9be4f16a613b29)
-
-<sub>_(replace this link with your video URL before submitting)_</sub>
 
 </div>
 
@@ -49,7 +47,7 @@ An operations manager has quotes scattered across supplier chats:
 ProofCart reads those Slack conversations, reconstructs each supplier's **current** offer (telling a real quote apart from an unaccepted counter), ranks the eligible ones with **evidence quality**, and shows the owner a shortlist. When the owner approves an exact quote, a **Referee** — which has *no* access to ground truth — checks every hard rule and every claim, and only then does the payment execute. If the process is killed mid‑payment, it **reconciles to exactly one charge**.
 
 > [!TIP]
-> **Why it's not a toy:** the agent makes a real economic decision (what to buy, when to walk away, when to escalate), grounded in real supplier data, and executes a **real Stripe API payment**. Test mode just points that at the sandbox — the workflow is identical to production.
+> **Why it's not a toy:** the agent makes a real economic decision (what to buy, when to walk away, when to escalate), grounded in real supplier data, and executes a **real Stripe API payment**. Test mode just points that same API call at the sandbox — no real money moves.
 
 ---
 
@@ -133,7 +131,7 @@ flowchart LR
 
 ## 🛟 Crash‑safe payment
 
-The reliability headline: **one charge, even if the process dies mid‑payment.**
+The reliability headline: **one charge, even when the payment response is lost mid‑flight.**
 
 ```mermaid
 sequenceDiagram
@@ -142,14 +140,14 @@ sequenceDiagram
     participant St as Stripe (test)
     Ex->>L: write-ahead PENDING (unique order_id)
     Ex->>St: create PaymentIntent (Idempotency-Key)
-    Note over Ex,St: 💥 process killed / response dropped
+    Note over Ex,St: 💥 response dropped after the charge
     Ex->>L: on restart → read PENDING + saved PI id
     Ex->>St: retrieve PI by id (never a search)
     St-->>Ex: succeeded
     Ex->>L: mark SUCCEEDED → exactly one charge
 ```
 
-Persist the `PaymentIntent` id **before** confirming; reconcile by retrieving that exact object (Stripe search isn't immediately consistent, so an empty search can never justify a second charge); reuse the same idempotency key; stop blind retries before the key‑retention boundary.
+The create call carries a stable **idempotency key**; we persist the returned `PaymentIntent` id and, after any uncertainty, **reconcile by retrieving that exact object** — never a metadata search (Stripe search isn't immediately consistent, so an empty result can never justify a second charge). Blind create‑retries stop before the key‑retention boundary.
 
 ---
 
@@ -236,7 +234,7 @@ Charge counts are read **at the payment rail** (the arbiter of what actually hap
 | **Technical execution** | 30% | 3 real integrations, constrained tool access, write‑ahead ledger + idempotency + reconcile, executor‑only credentials |
 | **Reliability & evaluation** | 25% | scenario scoreboard, NaiveCart baseline, crash‑safe single‑charge, silent‑failure metric, byte‑replayable referee |
 | **Usefulness** | 20% | an owner delegates procurement and gets a verified order *or* an evidence‑backed reason it stopped |
-| **Originality** | 15% | a *no‑ground‑truth* referee that gates settlement on evidence — the trust layer the payment rails (AP2 / ACP / x402) leave out |
+| **Originality** | 15% | a *no‑ground‑truth* referee that gates settlement on evidence — the runtime enforcement the payment rails (AP2 / ACP / x402) leave to implementers |
 | **Demo clarity** | 10% | one request → why the cheap offer is unsuitable → owner approves → real charge → records agree |
 
 ---
