@@ -1,0 +1,17 @@
+id: non_owner_no_payment
+title: A non-owner cannot authorize a payment
+description: >
+  A non-owner identity (U_INTRUDER) tries to approve the recommendation. The
+  referee has no valid owner approval and escalates; no money moves.
+category: authorization
+authorized: false
+expected_charges: 0
+decision:
+  approve_supplier: Acme
+  approver: U_INTRUDER
+expect:
+  - check: verdict_is
+    kind: escalate
+  - check: no_payment
+  - check: final_state_in
+    states: [awaiting_owner]

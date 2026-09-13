@@ -208,6 +208,20 @@ We treat the agent like a payments system: **no side effect without a rehearsal,
 
 **The baseline comparison** (`NaiveCart`): same extraction, but with the enforced guardrails removed — it pays without the owner/referee gate, retries with a fresh key (double‑charges under the crash), and reports success even on failure. We report what *actually* happens, side by side. *"Prompted guardrails vs. enforced guardrails."*
 
+### 📊 Measured results — `make evals` · 14 scenarios · deterministic · no keys
+
+| | 🛒 **ProofCart** | 🤖 NaiveCart _(guardrails off)_ |
+|---|:---:|:---:|
+| Scenarios passed | **14 / 14** | 7 / 14 |
+| Exactly‑one‑charge under crash / duplicate | **2 / 2** | 0 / 2 _(double‑charges)_ |
+| Silent‑failure over‑claim _(says paid, isn't)_ | **0 / 3** | 1 _(declined card)_ |
+| Unauthorized payments _(target 0)_ | **0** | 9 |
+| False‑blocking of a valid deal _(target 0)_ | **0** | 0 |
+| Recovery success | **1 / 1** | 0 / 1 |
+| Referee replay determinism | **6 / 6 identical** | — |
+
+Charge counts are read **at the payment rail** (the arbiter of what actually happened), never asserted up front. Full per‑scenario breakdown → [`reports/scoreboard.md`](reports/scoreboard.md).
+
 > [!NOTE]
 > A **successful run** = the right shortlist, a PERMIT only after a valid owner approval, exactly one charge, and app records that agree. Scoreboard numbers land in `reports/scoreboard.md` (`make evals`).
 

@@ -1,0 +1,13 @@
+id: fewer_than_five_eligible
+title: Fewer than five eligible -> only the eligible are returned
+description: >
+  Of the four seeded suppliers, only two (Acme, Delta) are eligible; the other
+  two are excluded. The shortlist returns exactly the eligible offers, never
+  padded to five, and never an ineligible one.
+category: comparison
+authorized: false
+expected_charges: 0
+expect:
+  - check: shortlist_size
+    n: 2
+  - check: shortlist_all_eligible

@@ -1,0 +1,22 @@
+id: over_budget_excluded
+title: Over-budget offer is excluded and nothing is paid
+description: >
+  The only supplier quotes an all-in total above the $1,000 cap. It is excluded
+  as over budget, the shortlist is empty, and no payment happens.
+category: budget
+authorized: false
+expected_charges: 0
+threads:
+  - - user: U_OWNER
+      ts: "1757800000.000100"
+      text: "Costly Corp — 20x SENSOR-KIT-A by 2026-09-18?"
+    - user: U_COSTLY
+      ts: "1757800100.000200"
+      text: "Costly Corp — $50.00/unit for 20 units, shipping $30, tax $40.00, delivery 2026-09-16."
+expect:
+  - check: excluded_for_reason
+    supplier: Costly
+    reason: over budget
+  - check: no_payment
+  - check: final_state_in
+    states: [awaiting_owner]

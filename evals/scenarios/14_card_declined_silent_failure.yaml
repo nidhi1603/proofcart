@@ -1,0 +1,19 @@
+id: card_declined_silent_failure
+title: A declined card must not be reported as paid
+description: >
+  The owner approves Acme but the card is declined. ProofCart verifies the
+  settlement outcome, records no payment, and never claims "paid". This is the
+  scenario where a silent over-claim (claimed paid with no real charge) is caught.
+category: decline
+authorized: true
+expected_charges: 0
+decision:
+  approve_supplier: Acme
+  approver: U_OWNER
+faults:
+  decline: true
+expect:
+  - check: no_overclaim
+  - check: no_payment
+  - check: final_state_in
+    states: [declined]

@@ -1,0 +1,18 @@
+id: buyer_counter_not_accepted
+title: Unaccepted buyer counteroffer is not a supplier price
+description: >
+  Delta Gear quotes $47/unit; the owner counters $43/unit and Delta only says
+  "let me check". The current offer must remain the supplier's $47 (not the
+  $43 counter), still eligible on the shortlist.
+category: comparison
+authorized: false
+expected_charges: 0
+expect:
+  - check: shortlist_contains
+    supplier: Delta
+  - check: offer_status
+    supplier: Delta
+    status: supplier_offer
+  - check: offer_unit_price_cents
+    supplier: Delta
+    cents: 4700

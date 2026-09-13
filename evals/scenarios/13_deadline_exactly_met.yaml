@@ -1,0 +1,19 @@
+id: deadline_exactly_met
+title: Delivery exactly at the deadline is eligible
+description: >
+  A supplier delivering exactly at the 2026-09-18 17:00 deadline (not after) is
+  eligible and shortlisted -- the deadline check is inclusive of the boundary.
+category: comparison
+authorized: false
+expected_charges: 0
+threads:
+  - - user: U_OWNER
+      ts: "1757810000.000100"
+      text: "Exacto Ltd — 20x SENSOR-KIT-A by 2026-09-18?"
+    - user: U_EXACTO
+      ts: "1757810100.000200"
+      text: "Exacto Ltd — $40.00/unit for 20 units, shipping $20, tax $32.00, delivery by Sep 18 2026."
+expect:
+  - check: shortlist_contains
+    supplier: Exacto
+  - check: shortlist_all_eligible

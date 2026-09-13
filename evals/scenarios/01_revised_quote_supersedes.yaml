@@ -1,0 +1,19 @@
+id: revised_quote_supersedes
+title: Revised quote supersedes the older one
+description: >
+  Acme sends v1 ($48/unit) then a later revision v2 ($45/unit). The current
+  reconstructed offer must be the revision, its history retained, and it is the
+  recommended shortlist pick.
+category: comparison
+authorized: false
+expected_charges: 0
+# uses the product's own seeded threads and mandate
+expect:
+  - check: offer_status
+    supplier: Acme
+    status: supplier_revision
+  - check: offer_unit_price_cents
+    supplier: Acme
+    cents: 4500
+  - check: recommendation_is
+    supplier: Acme

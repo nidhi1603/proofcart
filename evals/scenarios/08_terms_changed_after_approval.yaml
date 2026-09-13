@@ -1,0 +1,20 @@
+id: terms_changed_after_approval
+title: Terms mutated after approval are caught by the referee
+description: >
+  The owner approves Acme's exact quote, then the chosen QuoteTerms is mutated
+  ($45 -> $46/unit) after the approval is built. The referee's terms-hash binding
+  detects the change and blocks; no money moves.
+category: tampering
+authorized: false
+expected_charges: 0
+decision:
+  approve_supplier: Acme
+  approver: U_OWNER
+tamper:
+  unit_price_cents: 4600
+expect:
+  - check: verdict_is
+    kind: block
+  - check: no_payment
+  - check: final_state_in
+    states: [declined]

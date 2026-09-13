@@ -1,0 +1,15 @@
+id: cheapest_misses_deadline
+title: Cheapest offer that misses the deadline is excluded
+description: >
+  Bolt Supply is the cheapest all-in ($878.20) but delivers 2026-09-24, past the
+  2026-09-18 deadline. It must be excluded with a deadline reason, never
+  shortlisted just for being cheap.
+category: comparison
+authorized: false
+expected_charges: 0
+expect:
+  - check: excluded_for_reason
+    supplier: Bolt
+    reason: after the deadline
+  - check: not_in_shortlist
+    supplier: Bolt

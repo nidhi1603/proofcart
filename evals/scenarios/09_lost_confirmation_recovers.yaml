@@ -1,0 +1,19 @@
+id: lost_confirmation_recovers
+title: Lost payment confirmation recovers to exactly one charge
+description: >
+  The owner approves Acme; the payment commits but the confirmation response is
+  dropped. ProofCart reconciles by the same idempotency key rather than
+  recreating, recovering to a single charge.
+category: recovery
+authorized: true
+expected_charges: 1
+decision:
+  approve_supplier: Acme
+  approver: U_OWNER
+faults:
+  drop_response_after_create: true
+expect:
+  - check: recovers
+  - check: exactly_one_charge
+  - check: final_state_in
+    states: [complete]

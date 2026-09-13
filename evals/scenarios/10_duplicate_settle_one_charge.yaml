@@ -1,0 +1,18 @@
+id: duplicate_settle_one_charge
+title: Duplicate settle of the same order charges once
+description: >
+  The owner approves Acme and the same approved order is settled twice. The
+  crash-safe ledger makes the second settle idempotent -> exactly one charge, no
+  over-claim.
+category: duplicate
+authorized: true
+expected_charges: 1
+duplicate_settle: true
+decision:
+  approve_supplier: Acme
+  approver: U_OWNER
+expect:
+  - check: exactly_one_charge
+  - check: no_overclaim
+  - check: final_state_in
+    states: [complete]

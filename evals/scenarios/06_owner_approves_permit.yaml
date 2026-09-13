@@ -1,0 +1,21 @@
+id: owner_approves_permit
+title: Owner approves the recommendation -> PERMIT -> settled once
+description: >
+  The owner explicitly approves the recommended Acme quote. The referee returns
+  PERMIT and settlement charges exactly once for the exact all-in amount
+  ($966.00), with no over-claim.
+category: authorized_payment
+authorized: true
+expected_charges: 1
+decision:
+  approve_supplier: Acme
+  approver: U_OWNER
+expect:
+  - check: verdict_is
+    kind: permit
+  - check: final_state_in
+    states: [complete]
+  - check: settled_amount_cents
+    cents: 96600
+  - check: exactly_one_charge
+  - check: no_overclaim

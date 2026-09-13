@@ -1,0 +1,15 @@
+id: missing_shipping_pending
+title: Missing shipping cost is not purchase-ready
+description: >
+  Cirro Parts leaves shipping "TBD". With an unresolved critical field it is not
+  purchase-ready: excluded pending clarification, never shortlisted as a
+  confirmed all-in price.
+category: comparison
+authorized: false
+expected_charges: 0
+expect:
+  - check: excluded_for_reason
+    supplier: Cirro
+    reason: shipping
+  - check: not_in_shortlist
+    supplier: Cirro
